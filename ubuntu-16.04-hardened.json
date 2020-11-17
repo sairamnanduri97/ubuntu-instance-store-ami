@@ -1,0 +1,133 @@
+{
+  "variables": {
+    "aws_region": "{{env `aws_region`}}",
+    "ami_name": null,
+    "creator": "{{env `USER`}}",
+    "encrypted": "{{env `encrypted`}}",
+    "kms_key_id": "{{env `kms_key_id`}}",
+
+    "aws_access_key_id": "{{env `AWS_ACCESS_KEY_ID`}}",
+    "aws_secret_access_key": "{{env `AWS_SECRET_ACCESS_KEY`}}",
+    "aws_session_token": "{{env `AWS_SESSION_TOKEN`}}",
+
+    "source_ami_id": "{{env `source_ami_id`}}",
+    "source_ami_owners": "099720109477",
+    "source_ami_filter_name": "*ubuntu-xenial-16.04-*",
+    "arch": null,
+    "instance_type": null,
+    "ami_description": "Hardened Ubuntu 1604 image with cis benchmarks 2.0",
+
+    "ssh_interface": "",
+    "ssh_username": "ubuntu",
+    "temporary_security_group_source_cidrs": "",
+    "security_group_id": "",
+    "associate_public_ip_address": "true",
+    "subnet_id": "{{env subnet_id}}",
+    "remote_folder": "",
+    "launch_block_device_mappings_volume_size": "10",
+    "ami_users": "",
+    "additional_yum_repos": ""
+  },
+
+  "builders": [
+    {
+      "type": "amazon-instance",
+      "region": "{{user `aws_region`}}",
+      "source_ami": "{{user `source_ami_id`}}",
+      "ami_users": "{{user `ami_users`}}",
+      "snapshot_users": "{{user `ami_users`}}",
+      "source_ami_filter": {
+        "filters": {
+          "name": "{{user `source_ami_filter_name`}}",
+          "architecture": "{{user `arch`}}",
+          "root-device-type": "instance-store",
+          "state": "available",
+          "virtualization-type": "paravirtual"
+        },
+        "owners": [ "{{user `source_ami_owners`}}" ],
+        "most_recent": true
+      },
+      "instance_type": "{{user `instance_type`}}",
+      "ssh_username": "{{user `ssh_username`}}",
+
+      "account_id": "332346392857",
+      "s3_bucket": "vjspacker-images",
+      "x509_cert_path": "certificate.pem",
+      "x509_key_path": "private-key.pem",
+      "x509_upload_path": "/tmp",
+
+
+      "ssh_interface": "{{user `ssh_interface`}}",
+      "temporary_security_group_source_cidrs": "{{user `temporary_security_group_source_cidrs`}}",
+      "security_group_id": "{{user `security_group_id`}}",
+      "associate_public_ip_address": "{{user `associate_public_ip_address`}}",
+      "ssh_pty": true,
+      "encrypt_boot": "{{user `encrypted`}}",
+      "kms_key_id": "{{user `kms_key_id`}}",
+      "run_tags": {
+          "creator": "{{user `creator`}}"
+      },
+      "subnet_id": "{{user `subnet_id`}}",
+      "tags": {
+          "Name": "{{user `ami_name`}}",
+          "created": "{{timestamp}}",
+          "source_ami_id": "{{ user `source_ami_id`}}"
+      },
+      "ami_name": "{{user `ami_name`}}",
+      "ami_description": "{{ user `ami_description` }}"
+    }
+  ],
+
+  "provisioners": [
+    {
+        "type": "file",
+        "source": "./files/CWAgentParameters.json",
+        "destination": "/tmp/CWAgentParameters.json"
+    },
+    {
+      "type": "shell",
+      "remote_folder": "{{ user `remote_folder`}}",
+      "expect_disconnect": true,
+      "script": "{{template_dir}}/scripts/install_additional_repos.sh"
+    },
+    {
+      "type": "shell",
+      "remote_folder": "{{ user `remote_folder`}}",
+      "expect_disconnect": true,
+      "script": "{{template_dir}}/scripts/install_updates.sh"
+    },
+    {
+      "type": "ansible-local",
+      "playbook_file": "ansible/playbook.yaml",
+      "playbook_dir": "ansible"
+    },
+    {
+      "type": "shell",
+      "remote_folder": "{{ user `remote_folder`}}",
+      "expect_disconnect": true,
+      "script": "{{template_dir}}/scripts/cleanup_additional_repos.sh"
+    },
+    {
+      "type": "shell",
+      "remote_folder": "{{ user `remote_folder`}}",
+      "script": "{{template_dir}}/scripts/clean_up.sh"
+    },
+    {
+      "type": "shell",
+      "remote_folder": "{{ user `remote_folder`}}",
+      "script": "{{template_dir}}/scripts/validate.sh"
+    }
+  ],
+  "post-processors": [
+    {
+      "type": "manifest",
+      "output": "manifest.json",
+      "strip_path": true
+    },
+    {
+      "type": "manifest",
+      "output": "{{user `ami_name`}}-manifest.json",
+      "strip_path": true
+    }
+  ]
+}
