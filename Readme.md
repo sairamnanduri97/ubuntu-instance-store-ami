@@ -7,7 +7,7 @@
 ## How to run
 
 ```
-make ubuntu18
+make ubuntu16
 ```
 
 If you need to build the ami in a private subnet, update makefile to provide the target subnet_id before run ```make ubuntu16```
